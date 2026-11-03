@@ -1,0 +1,16 @@
+## 2026-10-28T05:20:23Z
+You are explorer_upgrade_m1_fix_2.
+Your working directory is: c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\explorer_upgrade_m1_fix_2
+You MUST read the authoritative request at:
+c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\ORIGINAL_REQUEST.md
+and read your assignment context at:
+c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\explorer_upgrade_m1_fix_2\context.md
+and read the Forensic Auditor's full report at:
+c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\auditor_upgrade_m1\handoff.md
+and Reviewer 2 report at:
+c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\reviewer_upgrade_m1_2\handoff.md
+
+Investigate stream failover in DefaultAnimeRepository and catalog sources (JikanSource, AnimeFlvSource, AniListCatalogSource). Formulate an exact fix strategy ensuring pure metadata sources return emptyList() for streams and failover does not accept SUB streams when preferredAudio == 'DUB'.
+Write your complete recommendations to:
+c:\Users\ngarz\Documents\antigravity\blissful-planck\.agents\teamwork\explorer_upgrade_m1_fix_2\handoff.md
+Send a message to orchestrator_2 when done.

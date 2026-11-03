@@ -1,0 +1,105 @@
+--- a/app/src/main/java/com/darknet/animetv/data/storage/AppDatabase.kt
++++ b/app/src/main/java/com/darknet/animetv/data/storage/AppDatabase.kt
+@@ -8,6 +8,8 @@
+ import com.darknet.animetv.data.model.Anime
+ import com.darknet.animetv.data.model.CustomSource
+ import com.darknet.animetv.data.model.WatchProgress
++import java.io.Closeable
++import org.json.JSONArray
+ 
+ class AppDatabaseHelper(context: Context) :
+     SQLiteOpenHelper(context, "animetv_v2.db", null, 1) {
+@@ -111,8 +113,12 @@
+     }
+ }
+ 
+-class AppStorage(context: Context) {
++class AppStorage(context: Context) : Closeable {
+     private val dbHelper = AppDatabaseHelper(context)
++
++    override fun close() {
++        dbHelper.close()
++    }
+ 
+     // --- Watch History ---
+     fun saveWatchProgress(progress: WatchProgress) {
+@@ -217,6 +223,34 @@
+         }
+     }
+ 
++    private fun serializeGenres(genres: List<String>): String {
++        val jsonArray = JSONArray()
++        for (genre in genres) {
++            jsonArray.put(genre)
++        }
++        return jsonArray.toString()
++    }
++
++    private fun deserializeGenres(genresStr: String?): List<String> {
++        if (genresStr.isNullOrBlank()) return emptyList()
++        return try {
++            if (genresStr.startsWith("[")) {
++                val jsonArray = JSONArray(genresStr)
++                val list = ArrayList<String>(jsonArray.length())
++                for (i in 0 until jsonArray.length()) {
++                    val genre = jsonArray.optString(i)
++                    if (!genre.isNullOrEmpty()) {
++                        list.add(genre)
++                    }
++                }
++                list
++            } else {
++                genresStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
++            }
++        } catch (e: Exception) {
++            genresStr.split(",").map { it.trim() }.filter { it.isNotEmpty() }
++        }
++    }
++
+     fun addFavorite(anime: Anime) {
+         val db = dbHelper.writableDatabase
+         val values = ContentValues().apply {
+@@ -226,7 +260,7 @@
+             put("backdrop_url", anime.backdropUrl)
+             put("score", anime.score)
+             put("year", anime.year)
+             put("status", anime.status)
+-            put("genres", anime.genres.joinToString(","))
++            put("genres", serializeGenres(anime.genres))
+             put("synopsis", anime.synopsis)
+             put("added_at", System.currentTimeMillis())
+         }
+@@ -259,7 +293,7 @@
+         cursor.use {
+             if (it.moveToFirst()) {
+-                val genresStr = it.getString(it.getColumnIndexOrThrow("genres")) ?: ""
++                val genresStr = it.getString(it.getColumnIndexOrThrow("genres"))
+                 return Anime(
+                     id = it.getString(it.getColumnIndexOrThrow("anime_id")),
+                     title = it.getString(it.getColumnIndexOrThrow("title")),
+@@ -268,7 +302,7 @@
+                     score = it.getDouble(it.getColumnIndexOrThrow("score")),
+                     year = it.getInt(it.getColumnIndexOrThrow("year")),
+                     status = it.getString(it.getColumnIndexOrThrow("status")),
+-                    genres = if (genresStr.isNotEmpty()) genresStr.split(",") else emptyList(),
++                    genres = deserializeGenres(genresStr),
+                     synopsis = it.getString(it.getColumnIndexOrThrow("synopsis"))
+                 )
+             }
+@@ -282,7 +316,7 @@
+         cursor.use {
+             while (it.moveToNext()) {
+-                val genresStr = it.getString(it.getColumnIndexOrThrow("genres")) ?: ""
++                val genresStr = it.getString(it.getColumnIndexOrThrow("genres"))
+                 list.add(
+                     Anime(
+                         id = it.getString(it.getColumnIndexOrThrow("anime_id")),
+@@ -292,7 +326,7 @@
+                         score = it.getDouble(it.getColumnIndexOrThrow("score")),
+                         year = it.getInt(it.getColumnIndexOrThrow("year")),
+                         status = it.getString(it.getColumnIndexOrThrow("status")),
+-                        genres = if (genresStr.isNotEmpty()) genresStr.split(",") else emptyList(),
++                        genres = deserializeGenres(genresStr),
+                         synopsis = it.getString(it.getColumnIndexOrThrow("synopsis"))
+                     )
+                 )

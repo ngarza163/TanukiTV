@@ -1,0 +1,72 @@
+name: Build & Publish TanukiTV OTA Release
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant Execute Permission for Gradlew
+        run: chmod +x ./gradlew
+
+      - name: Compute OTA Version & Tag
+        id: version
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
+            RAW_TAG="${GITHUB_REF#refs/tags/}"
+            VER_NAME="${RAW_TAG#v}"
+          else
+            VER_NAME="2.1.${GITHUB_RUN_NUMBER}"
+            RAW_TAG="v${VER_NAME}"
+          fi
+          VER_CODE=$((200 + GITHUB_RUN_NUMBER))
+          echo "tag=${RAW_TAG}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VER_NAME}" >> "$GITHUB_OUTPUT"
+          echo "version_code=${VER_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Debug & Release OTA APKs
+        run: |
+          ./gradlew assembleDebug assembleRelease \
+            -PversionName="${{ steps.version.outputs.version_name }}" \
+            -PversionCode="${{ steps.version.outputs.version_code }}"
+
+      - name: Prepare Release APK Artifacts
+        run: |
+          mkdir -p release-assets
+          cp app/build/outputs/apk/debug/app-debug.apk "release-assets/TanukiTV-debug-v${{ steps.version.outputs.version_name }}.apk"
+          cp app/build/outputs/apk/release/app-release.apk "release-assets/TanukiTV-release-v${{ steps.version.outputs.version_name }}.apk"
+
+      - name: Publish GitHub Release for In-App OTA Updater
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: "TanukiTV ${{ steps.version.outputs.tag }}"
+          body: |
+            Automated Android TV OTA Release (`${{ steps.version.outputs.tag }}`) built from commit `${{ github.sha }}`.
+            - **In-App Update**: Open **TanukiTV → Settings → About & Updates → Check Now** on your Android TV to download and install this release directly.
+          files: |
+            release-assets/*.apk
+          draft: false
+          prerelease: false
+          make_latest: true
